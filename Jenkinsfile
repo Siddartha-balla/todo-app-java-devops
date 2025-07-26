@@ -29,16 +29,15 @@ pipeline {
 
         // Stage 2: Build Java Backend using Maven
         stage('Build Java Backend') {
-            steps {
-                // Navigates into the 'backend' directory where the pom.xml is located.
-                dir('backend') {
-                    // Executes the Maven 'clean package' command using 'bat' for Windows.
-                    // -DskipTests: Skips running unit tests during the build.
-                    // In a real CI pipeline, you'd have a separate 'Test' stage to run tests.
-                    bat "mvn clean package -DskipTests"
-                }
+    steps {
+        dir('backend') {
+            // Wrap the Maven command with 'withMaven' and specify the Maven installation name
+            withMaven(maven: 'Maven 3.9.11') { // <<< IMPORTANT: Use the name you gave in Jenkins Tools config
+                bat "mvn clean package -DskipTests"
             }
         }
+    }
+}
 
         // Stage 3: Build Docker Image for the Java Backend
         stage('Build Docker Image') {
