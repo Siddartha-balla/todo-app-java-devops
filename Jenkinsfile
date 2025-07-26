@@ -10,7 +10,7 @@ pipeline {
     // Replace 'your-gcp-project-id' with your actual Google Cloud Project ID.
     // These will be used for tagging Docker images for Google Container Registry (GCR).
     environment {
-        GCP_PROJECT_ID = 'cbd-a-6712' // <<< IMPORTANT: REPLACE THIS WITH YOUR ACTUAL GCP PROJECT ID
+        GCP_PROJECT_ID = 'cbd-a-6712' // <<< IMPORTANT: ENSURE THIS IS YOUR ACTUAL GCP PROJECT ID
         IMAGE_NAME = "gcr.io/${GCP_PROJECT_ID}/todo-app-backend"
         // Credentials for GCP will be handled via service account key in Jenkins later,
         // or by configuring gcloud CLI on the Jenkins agent.
@@ -22,8 +22,8 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 // Uses the Git SCM plugin to clone the repository.
-                // The 'credentialsId' refers to the ID of the GitHub PAT credential you created in Jenkins.
-                git branch: 'main', credentialsId: 'github-pat-for-todo-app', url: 'https://github.com/Siddartha-balla/todo-app-java-devops.git' // <<< IMPORTANT: REPLACE 'your-username' AND 'github-pat-for-todo-app' IF YOU USED A DIFFERENT ID
+                // Since you chose not to use credentials, we've removed the credentialsId parameter.
+                git branch: 'main', url: 'https://github.com/Siddartha-balla/todo-app-java-devops.git'
             }
         }
 
@@ -32,10 +32,10 @@ pipeline {
             steps {
                 // Navigates into the 'backend' directory where the pom.xml is located.
                 dir('backend') {
-                    // Executes the Maven 'clean package' command.
+                    // Executes the Maven 'clean package' command using 'bat' for Windows.
                     // -DskipTests: Skips running unit tests during the build.
                     // In a real CI pipeline, you'd have a separate 'Test' stage to run tests.
-                    sh "mvn clean package -DskipTests"
+                    bat "mvn clean package -DskipTests"
                 }
             }
         }
@@ -49,6 +49,7 @@ pipeline {
                         // Builds the Docker image.
                         // Tags the image with both the Jenkins BUILD_NUMBER (for unique versions)
                         // and 'latest' (for easy reference to the most recent successful build).
+                        // Note: 'docker.build' is a Jenkins Pipeline step, which handles calling Docker CLI.
                         docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}", ".")
                         docker.build("${IMAGE_NAME}:latest", ".")
                     }
@@ -60,12 +61,13 @@ pipeline {
         stage('Push Docker Image to GCR') {
             steps {
                 script {
-                    // Authenticates Docker with GCR.
-                    // This assumes 'gcloud' CLI is installed and configured on the Jenkins agent,
+                    // Authenticates Docker with GCR using 'bat' for Windows.
+                    // This assumes 'gcloud' CLI is installed and configured on the Jenkins agent's PATH,
                     // and it has permissions to push to GCR (e.g., via a service account key).
-                    sh "gcloud auth configure-docker"
+                    bat "gcloud auth configure-docker"
 
                     // Pushes the tagged Docker images to GCR.
+                    // Note: 'docker.image.push' is a Jenkins Pipeline step.
                     docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
                     docker.image("${IMAGE_NAME}:latest").push()
                 }
