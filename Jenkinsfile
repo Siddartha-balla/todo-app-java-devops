@@ -55,24 +55,26 @@ pipeline {
         }
 
         // Stage 4: Push Docker Image to Google Container Registry (GCR)
-        stage('Push Docker Image to GCR') {
-            steps {
-                script {
-                    // Use withCredentials to expose the service account key to the pipeline
-                    // 'gcp-service-account-key' should match the ID you gave in Jenkins Credentials
-                    withCredentials([googleServiceAccountKey('gcp-service-account-key')]) { // <<< Changed binding
-    // The service account key file will be automatically placed at a temporary path
-    // and its path will be available in the GOOGLE_APPLICATION_CREDENTIALS environment variable.
-    // gcloud automatically picks up GOOGLE_APPLICATION_CREDENTIALS.
-    bat "gcloud auth configure-docker" // This command will now use the authenticated gcloud
+        
 
-    // Push the Docker images to GCR
-    docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
-    docker.image("${IMAGE_NAME}:latest").push()
-}
-                }
+stage('Push Docker Image to GCR') {
+    steps {
+        script {
+            // Use 'file' binding for the 'Secret file' credential
+            withCredentials([file(credentialsId: 'gcp-service-account-json-file', variable: 'GCP_KEY_FILE_PATH')]) {
+                // Authenticate gcloud using the path to the temporary file
+                bat "gcloud auth activate-service-account --key-file=%GCP_KEY_FILE_PATH%"
+                bat "gcloud auth configure-docker"
+
+                // Push the Docker images to GCR
+                docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
+                docker.image("${IMAGE_NAME}:latest").push()
             }
         }
+    }
+}
+
+
 
         // Stage 5: Deploy to Kubernetes (Placeholder for now)
         // This stage will be fully implemented once we set up Kubernetes on GCP.
