@@ -60,17 +60,16 @@ pipeline {
                 script {
                     // Use withCredentials to expose the service account key to the pipeline
                     // 'gcp-service-account-key' should match the ID you gave in Jenkins Credentials
-                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_KEY_FILE')]) {
-                        // Authenticate gcloud using the service account key
-                        // The 'bat' command is for Windows
-                        bat "gcloud auth activate-service-account --key-file=%GCP_KEY_FILE%"
-                        bat "gcloud auth configure-docker" // Configures Docker to use gcloud for GCR authentication
+                    withCredentials([googleServiceAccountKey('gcp-service-account-key')]) { // <<< Changed binding
+    // The service account key file will be automatically placed at a temporary path
+    // and its path will be available in the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+    // gcloud automatically picks up GOOGLE_APPLICATION_CREDENTIALS.
+    bat "gcloud auth configure-docker" // This command will now use the authenticated gcloud
 
-                        // Push the Docker images to GCR
-                        // Note: 'docker.image.push' is a Jenkins Pipeline step.
-                        docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
-                        docker.image("${IMAGE_NAME}:latest").push()
-                    }
+    // Push the Docker images to GCR
+    docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
+    docker.image("${IMAGE_NAME}:latest").push()
+}
                 }
             }
         }
