@@ -12,8 +12,6 @@ pipeline {
     environment {
         GCP_PROJECT_ID = 'cbd-a-6712' // <<< IMPORTANT: ENSURE THIS IS YOUR ACTUAL GCP PROJECT ID
         IMAGE_NAME = "gcr.io/${GCP_PROJECT_ID}/todo-app-backend"
-        // Credentials for GCP will be handled via service account key in Jenkins later,
-        // or by configuring gcloud CLI on the Jenkins agent.
     }
 
     // Stages define the logical steps of your pipeline.
@@ -29,15 +27,15 @@ pipeline {
 
         // Stage 2: Build Java Backend using Maven
         stage('Build Java Backend') {
-    steps {
-        dir('backend') {
-            // Wrap the Maven command with 'withMaven' and specify the Maven installation name
-            withMaven(maven: 'Maven 3.9.11') { // <<< IMPORTANT: Use the name you gave in Jenkins Tools config
-                bat "mvn clean package -DskipTests"
+            steps {
+                dir('backend') {
+                    // Wrap the Maven command with 'withMaven' and specify the Maven installation name
+                    withMaven(maven: 'Maven 3.9.11') { // <<< IMPORTANT: Use the name you gave in Jenkins Tools config (e.g., 'Maven 3.9.11' or 'Maven 3.x.x')
+                        bat "mvn clean package -DskipTests"
+                    }
+                }
             }
         }
-    }
-}
 
         // Stage 3: Build Docker Image for the Java Backend
         stage('Build Docker Image') {
@@ -60,15 +58,19 @@ pipeline {
         stage('Push Docker Image to GCR') {
             steps {
                 script {
-                    // Authenticates Docker with GCR using 'bat' for Windows.
-                    // This assumes 'gcloud' CLI is installed and configured on the Jenkins agent's PATH,
-                    // and it has permissions to push to GCR (e.g., via a service account key).
-                    bat "gcloud auth configure-docker"
+                    // Use withCredentials to expose the service account key to the pipeline
+                    // 'gcp-service-account-key' should match the ID you gave in Jenkins Credentials
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_KEY_FILE')]) {
+                        // Authenticate gcloud using the service account key
+                        // The 'bat' command is for Windows
+                        bat "gcloud auth activate-service-account --key-file=%GCP_KEY_FILE%"
+                        bat "gcloud auth configure-docker" // Configures Docker to use gcloud for GCR authentication
 
-                    // Pushes the tagged Docker images to GCR.
-                    // Note: 'docker.image.push' is a Jenkins Pipeline step.
-                    docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
-                    docker.image("${IMAGE_NAME}:latest").push()
+                        // Push the Docker images to GCR
+                        // Note: 'docker.image.push' is a Jenkins Pipeline step.
+                        docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
+                        docker.image("${IMAGE_NAME}:latest").push()
+                    }
                 }
             }
         }
