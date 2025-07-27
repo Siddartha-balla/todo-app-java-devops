@@ -10,9 +10,10 @@ pipeline {
     // Replace 'your-gcp-project-id' with your actual Google Cloud Project ID.
     // These will be used for tagging Docker images for Google Container Registry (GCR).
     environment {
-        GCP_PROJECT_ID = 'cbd-a-6712' // <<< IMPORTANT: ENSURE THIS IS YOUR ACTUAL GCP PROJECT ID
-        IMAGE_NAME = "gcr.io/${GCP_PROJECT_ID}/todo-app-backend"
-    }
+    GCP_PROJECT_ID = 'cbd-a-6712'
+    // New IMAGE_NAME format for Artifact Registry: <REGION>-docker.pkg.dev/<PROJECT_ID>/<REPOSITORY_NAME>/<IMAGE_NAME_SUFFIX>
+    IMAGE_NAME = "asia-south1-docker.pkg.dev/${GCP_PROJECT_ID}/todo-app-images/todo-app-backend" // <<< IMPORTANT: Updated path
+}
 
     // Stages define the logical steps of your pipeline.
     stages {
